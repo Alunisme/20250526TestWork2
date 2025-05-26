@@ -4,6 +4,15 @@ let predictions = [];
 let handpose;
 let handPredictions = [];
 let gesture = 'none'; // 'scissors', 'rock', 'paper', 'none'
+let faceImgs = {};
+let currentMask = null;
+let lastGesture = 'none';
+
+function preload() {
+  faceImgs['scissors'] = loadImage('images/face1.jpg');
+  faceImgs['rock'] = loadImage('images/face2.png');
+  faceImgs['paper'] = loadImage('images/face3.png');
+}
 
 function setup() {
   createCanvas(640, 480).position(
@@ -59,16 +68,43 @@ function draw() {
   image(video, 0, 0, width, height);
 
   // 手勢偵測
+  let detectedGesture = 'none';
   if (handPredictions.length > 0) {
-    gesture = detectGesture(handPredictions[0]);
-  } else {
-    gesture = 'none';
+    detectedGesture = detectGesture(handPredictions[0]);
+  }
+
+  // 只有偵測到新手勢才切換面罩
+  if (['scissors', 'rock', 'paper'].includes(detectedGesture) && detectedGesture !== lastGesture) {
+    currentMask = faceImgs[detectedGesture];
+    lastGesture = detectedGesture;
   }
 
   if (predictions.length > 0) {
     const keypoints = predictions[0].scaledMesh;
-    drawFace(keypoints, gesture);
+    if (currentMask) {
+      drawFaceMask(keypoints, currentMask);
+    } else {
+      drawFace(keypoints, lastGesture);
+    }
   }
+}
+
+// 臉部面罩繪製
+function drawFaceMask(keypoints, img) {
+  // 以臉輪廓為基準，將圖片貼到臉上
+  // 取臉輪廓的外接矩形
+  const faceOutline = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i of faceOutline) {
+    let [x, y] = keypoints[i];
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  let w = maxX - minX;
+  let h = maxY - minY;
+  image(img, minX, minY, w, h);
 }
 
 // 臉部繪製函式，參考 Coding Train 範例，並根據 gesture 改變表情
