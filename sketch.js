@@ -91,20 +91,28 @@ function draw() {
 
 // 臉部面罩繪製
 function drawFaceMask(keypoints, img) {
-  // 以臉輪廓為基準，將圖片貼到臉上
-  // 取臉輪廓的外接矩形
+  // 臉部輪廓點位（與 Coding Train 範例一致）
   const faceOutline = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (let i of faceOutline) {
-    let [x, y] = keypoints[i];
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
+  // 取得臉部輪廓對應的點
+  let pts = faceOutline.map(i => keypoints[i]);
+  // 設定圖片為貼圖
+  texture(img);
+  beginShape();
+  for (let i = 0; i < pts.length; i++) {
+    // 計算對應的貼圖座標（以臉部輪廓的外接矩形做對應）
+    let x = pts[i][0];
+    let y = pts[i][1];
+    // 計算貼圖的 u, v
+    // 先找出臉部輪廓的外接矩形
+    let minX = Math.min(...pts.map(p => p[0]));
+    let minY = Math.min(...pts.map(p => p[1]));
+    let maxX = Math.max(...pts.map(p => p[0]));
+    let maxY = Math.max(...pts.map(p => p[1]));
+    let u = (x - minX) / (maxX - minX);
+    let v = (y - minY) / (maxY - minY);
+    vertex(x, y, u * img.width, v * img.height);
   }
-  let w = maxX - minX;
-  let h = maxY - minY;
-  image(img, minX, minY, w, h);
+  endShape(CLOSE);
 }
 
 // 臉部繪製函式，參考 Coding Train 範例，並根據 gesture 改變表情
